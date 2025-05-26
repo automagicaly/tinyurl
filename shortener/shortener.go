@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"log"
 	"math"
 	"math/rand/v2"
 	"os"
@@ -41,29 +42,40 @@ func NewShortener() *Shortener {
 func (s *Shortener) LoadFromLog() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	log := log.New(
+		os.Stdout,
+		"[SHORTENER/RESTORE FROM LOG] ",
+		log.LUTC|log.Ldate|log.Ltime|log.Lmsgprefix,
+	)
 
-	fmt.Printf("[SHORTENER/RESTORE FROM LOG] Starting...\n")
+	log.Println("Starting...")
 
 	_, err := s.log.Seek(0, io.SeekStart)
 	assertNoError(err)
 	scanner := bufio.NewScanner(s.log)
-	fmt.Printf("[SHORTENER/RESTORE FROM LOG] Log ready, reading entries...\n")
+	log.Println("Log ready, reading entries...")
+	green := func(s string) string {
+		return fmt.Sprintf("\x1b[1;32m%s\x1b[0m", s)
+	}
+	red := func(s string) string {
+		return fmt.Sprintf("\x1b[1;31m%s\x1b[0m", s)
+	}
 	for scanner.Scan() {
 		entry := scanner.Text()
 		action, id, target := parseLogEntry(entry)
 		switch action {
 		case ActionInsert:
-			fmt.Printf("[SHORTENER/RESTORE FROM LOG] [ADD] %s -> %s\n", id, target)
+			log.Printf("%s: %s -> %s\n", green("ADD"), id, target)
 			assertNoError(s.restore(id, target))
 		case ActionRemove:
-			fmt.Printf("[SHORTENER/RESTORE FROM LOG] [REMOVE] %s -> %s\n", id, target)
+			log.Printf("%s: %s -> %s\n", red("DEL"), id, target)
 			assertNoError(s.forceRemove(id))
 		default:
-			fmt.Printf("[SHORTENER/RESTORE FROM LOG] Skipping invalid log entry '%s'\n", entry)
+			log.Printf("Skipping invalid log entry '%s'\n", entry)
 		}
 	}
 
-	fmt.Printf("[SHORTENER/RESTORE FROM LOG] Done!\n")
+	log.Println("Done!")
 }
 
 func (s *Shortener) Insert(url string) (string, error) {
