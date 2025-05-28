@@ -12,6 +12,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	sl "lorde.tech/tinyurl/skiplist"
 )
 
 const TINY_URL_LENGTH = 8
@@ -26,7 +28,7 @@ var TINY_URL_CHARTER_SET_SIZE = int64(len(TINY_URL_CHARTER_SET))
 var TINE_URL_ID_QUANITY = int64(math.Pow(float64(TINY_URL_CHARTER_SET_SIZE), float64(TINY_URL_LENGTH)))
 
 type Shortener struct {
-	urlMap *SkipList
+	urlMap *sl.SkipList[string]
 	log    *os.File
 	lock   sync.Mutex
 }
@@ -36,7 +38,7 @@ func NewShortener() *Shortener {
 	assertNoError(err)
 	_, err = log.Seek(0, io.SeekEnd)
 	assertNoError(err)
-	return &Shortener{urlMap: NewSkiplist(), log: log}
+	return &Shortener{urlMap: sl.NewSkiplist[string](), log: log}
 }
 
 func (s *Shortener) LoadFromLog() {

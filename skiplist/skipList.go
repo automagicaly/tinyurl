@@ -1,4 +1,4 @@
-package shortener
+package skiplist
 
 import (
 	"errors"
@@ -10,87 +10,87 @@ import (
 
 const MAX_LEVEL = 31
 
-type markablePointer struct {
-	ref  *node
+type markablePointer[T any] struct {
+	ref  *node[T]
 	mark bool
 }
 
-type atomicMarkablePointer struct {
+type atomicMarkablePointer[T any] struct {
 	value atomic.Value
 }
 
-func (amp *atomicMarkablePointer) Store(pointer markablePointer) {
+func (amp *atomicMarkablePointer[T]) Store(pointer markablePointer[T]) {
 	amp.value.Store(pointer)
 }
 
-func (amp *atomicMarkablePointer) Load() markablePointer {
+func (amp *atomicMarkablePointer[T]) Load() markablePointer[T] {
 	if amp.value.Load() == nil {
-		return markablePointer{mark: false, ref: nil}
+		return markablePointer[T]{mark: false, ref: nil}
 	}
-	return amp.value.Load().(markablePointer)
+	return amp.value.Load().(markablePointer[T])
 }
 
-func (amp *atomicMarkablePointer) CompareAndSwap(oldRef *node, oldMark bool, newRef *node, newMark bool) bool {
+func (amp *atomicMarkablePointer[T]) CompareAndSwap(oldRef *node[T], oldMark bool, newRef *node[T], newMark bool) bool {
 	return amp.value.CompareAndSwap(
-		markablePointer{ref: oldRef, mark: oldMark},
-		markablePointer{ref: newRef, mark: newMark},
+		markablePointer[T]{ref: oldRef, mark: oldMark},
+		markablePointer[T]{ref: newRef, mark: newMark},
 	)
 }
 
-func (amp *atomicMarkablePointer) IsMarked() bool {
+func (amp *atomicMarkablePointer[T]) IsMarked() bool {
 	return amp.Load().mark
 }
 
-func (amp *atomicMarkablePointer) SetMark(mark bool) {
-	amp.value.Swap(markablePointer{mark: mark, ref: amp.Load().ref})
+func (amp *atomicMarkablePointer[T]) SetMark(mark bool) {
+	amp.value.Swap(markablePointer[T]{mark: mark, ref: amp.Load().ref})
 }
 
-func (amp *atomicMarkablePointer) Ref() *node {
+func (amp *atomicMarkablePointer[T]) Ref() *node[T] {
 	return amp.Load().ref
 }
 
-func (amp *atomicMarkablePointer) SetRef(ref *node) {
-	amp.value.Swap(markablePointer{mark: amp.Load().mark, ref: ref})
+func (amp *atomicMarkablePointer[T]) SetRef(ref *node[T]) {
+	amp.value.Swap(markablePointer[T]{mark: amp.Load().mark, ref: ref})
 }
 
-type node struct {
+type node[T any] struct {
 	key    string
-	value  string
+	value  T
 	height int
-	next   [MAX_LEVEL + 1]atomicMarkablePointer
+	next   [MAX_LEVEL + 1]atomicMarkablePointer[T]
 }
 
-type nodeTrace = [MAX_LEVEL + 1]*node
+type nodeTrace[T any] = [MAX_LEVEL + 1]*node[T]
 
-type SkipList struct {
-	head *node
-	tail *node
+type SkipList[T any] struct {
+	head *node[T]
+	tail *node[T]
 }
 
-func NewSkiplist() *SkipList {
-	head := newNode("", "[HEAD]", MAX_LEVEL)
-	tail := newNode("\U0010ffff[TAIL]", "[TAIL]", MAX_LEVEL)
+func NewSkiplist[T any]() *SkipList[T] {
+	head := newNode[T]("", *new(T), MAX_LEVEL)
+	tail := newNode[T]("\U0010ffff[TAIL]", *new(T), MAX_LEVEL)
 	for i := range MAX_LEVEL + 1 {
 		head.next[i].SetRef(tail)
 	}
-	return &SkipList{head: head, tail: tail}
+	return &SkipList[T]{head: head, tail: tail}
 }
 
-func newNode(key string, value string, height int) *node {
-	res := &node{
+func newNode[T any](key string, value T, height int) *node[T] {
+	res := &node[T]{
 		key:    key,
 		value:  value,
 		height: height,
 	}
 	for i := range height + 1 {
-		res.next[i].Store(markablePointer{ref: nil, mark: false})
+		res.next[i].Store(markablePointer[T]{ref: nil, mark: false})
 	}
 	return res
 }
 
-func (s *SkipList) find(key string) (pred *nodeTrace, succ *nodeTrace, found bool) {
-	pred = new(nodeTrace)
-	succ = new(nodeTrace)
+func (s *SkipList[T]) find(key string) (pred *nodeTrace[T], succ *nodeTrace[T], found bool) {
+	pred = new(nodeTrace[T])
+	succ = new(nodeTrace[T])
 
 RETRY:
 	for {
@@ -132,10 +132,10 @@ func generateHeight() int {
 	return height
 }
 
-func (s *SkipList) Insert(key string, value string) error {
+func (s *SkipList[T]) Insert(key string, value T) error {
 
 	height := generateHeight()
-	newNode := newNode(key, value, height)
+	newNode := newNode[T](key, value, height)
 
 	for {
 		pred, succ, found := s.find(key)
@@ -173,7 +173,7 @@ func (s *SkipList) Insert(key string, value string) error {
 
 }
 
-func (s *SkipList) Search(key string) (bool, string) {
+func (s *SkipList[T]) Search(key string) (bool, T) {
 	last := s.head
 	current := s.head
 	for level := MAX_LEVEL; level >= 0; level-- {
@@ -198,14 +198,14 @@ func (s *SkipList) Search(key string) (bool, string) {
 	return (current.key == key), current.value
 }
 
-func (s *SkipList) Print() {
+func (s *SkipList[T]) Print() {
 	for i := s.head.next[0].Ref(); i != s.tail; i = i.next[0].Ref() {
 		fmt.Println(i.key, i.value)
 	}
 }
 
-func (s *SkipList) Iter() iter.Seq2[string, string] {
-	return func(yield func(string, string) bool) {
+func (s *SkipList[T]) Iter() iter.Seq2[string, T] {
+	return func(yield func(string, T) bool) {
 		for i := s.head.next[0]; i.Ref() != s.tail; i = i.Ref().next[0] {
 			if i.IsMarked() {
 				continue
@@ -217,7 +217,7 @@ func (s *SkipList) Iter() iter.Seq2[string, string] {
 	}
 }
 
-func (s *SkipList) Remove(id string) error {
+func (s *SkipList[T]) Remove(id string) error {
 	_, succ, found := s.find(id)
 	if !found {
 		return errors.New(fmt.Sprintf("ID '%s' NOT delete! ID could not be found!", id))
