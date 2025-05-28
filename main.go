@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,10 +10,13 @@ import (
 	"os"
 	"strings"
 
+	swgui "github.com/swaggest/swgui/v5cdn"
+
 	tiny "lorde.tech/tinyurl/shortener"
 )
 
-// TODO: Add input validation for URLs an IDs
+//go:embed static/openapi.yaml
+var openapi string
 
 func main() {
 	shortener := tiny.NewShortener()
@@ -25,11 +29,26 @@ func main() {
 
 	http.HandleFunc("GET /{id}", translateTinyUrl(shortener))
 	http.HandleFunc("GET /api/urls", listTinyUrls(shortener))
-	http.HandleFunc("GET /api/urls/{id}", fetchTinyUrl(shortener))
 	http.HandleFunc("POST /api/urls", createTinyUrl(shortener))
+	http.HandleFunc("GET /api/urls/{id}", fetchTinyUrl(shortener))
 	http.HandleFunc("DELETE /api/urls/{id}", deleteTinyUrl(shortener))
+
+	http.HandleFunc("/", redicrectToDocs)
+	http.Handle("/api/docs/", swgui.New("Tiny URL", "/api/docs/openapi.yaml", "/api/docs/"))
+	http.HandleFunc("/api/docs/openapi.yaml", serveOpenapi)
+
 	log.Println("Listening on port 1337")
 	http.ListenAndServe("localhost:1337", nil)
+}
+
+func redicrectToDocs(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/api/docs/", http.StatusFound)
+}
+
+func serveOpenapi(w http.ResponseWriter, r *http.Request) {
+	log := newLogger(r, "API/DOCS")
+	log.Info("openapi.yaml")
+	fmt.Fprint(w, openapi)
 }
 
 func translateTinyUrl(s *tiny.Shortener) http.HandlerFunc {
@@ -232,8 +251,8 @@ func normalizeIp(ip netip.Addr) string {
 }
 
 type Request struct {
-	Id     string `json:"id,omitempty"`
-	Target string `json:"target"`
+	Id     string `json:"from,omitempty"`
+	Target string `json:"to"`
 }
 
 type ErrorResponse struct {

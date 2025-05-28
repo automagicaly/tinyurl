@@ -1,0 +1,6 @@
+github.com/bool64/dev v0.2.39 h1:kP8DnMGlWXhGYJEZE/J0l/gVBdbuhoPGL+MJG4QbofE=
+github.com/bool64/dev v0.2.39/go.mod h1:iJbh1y/HkunEPhgebWRNcs8wfGq7sjvJ6W5iabL8ACg=
+github.com/swaggest/swgui v1.8.4 h1:iYxPCG69hLajio0/6vey0245AM+fvpT4ENhiFXb+KMU=
+github.com/swaggest/swgui v1.8.4/go.mod h1:ct+lyINt6I70raCWwmqfgZ0ZMu3OAF4DRwrg32DDwJY=
+github.com/vearutop/statigz v1.4.0 h1:RQL0KG3j/uyA/PFpHeZ/L6l2ta920/MxlOAIGEOuwmU=
+github.com/vearutop/statigz v1.4.0/go.mod h1:LYTolBLiz9oJISwiVKnOQoIwhO1LWX1A7OECawGS8XE=
