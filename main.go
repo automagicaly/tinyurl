@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"os"
 	"strings"
+	"time"
 
 	swgui "github.com/swaggest/swgui/v5cdn"
 
@@ -22,14 +23,22 @@ var openapi string
 func main() {
 	shortener := tiny.NewShortener()
 	shortener.LoadFromLog()
+
 	log := log.New(
 		os.Stdout,
 		"[SERVER] ",
 		log.LUTC|log.Ldate|log.Ltime|log.Lmsgprefix,
 	)
+
+	// log compaction routine
+	go func() {
+		for range time.Tick(24 * time.Hour) {
+			shortener.CompactLog()
+		}
+	}()
+
 	apiLimiter := rl.NewRateLimiter(10)
 	translateLimiter := rl.NewRateLimiter(100)
-
 	apiWrapper := func(f http.HandlerFunc) http.HandlerFunc {
 		return rateLimited(apiLimiter, f)
 	}
