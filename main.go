@@ -12,6 +12,7 @@ import (
 
 	swgui "github.com/swaggest/swgui/v5cdn"
 
+	rl "lorde.tech/tinyurl/rate_limiter"
 	tiny "lorde.tech/tinyurl/shortener"
 )
 
@@ -26,12 +27,18 @@ func main() {
 		"[SERVER] ",
 		log.LUTC|log.Ldate|log.Ltime|log.Lmsgprefix,
 	)
+	apiLimiter := rl.NewRateLimiter(10)
+	translateLimiter := rl.NewRateLimiter(100)
 
-	http.HandleFunc("GET /{id}", translateTinyUrl(shortener))
-	http.HandleFunc("GET /api/urls", listTinyUrls(shortener))
-	http.HandleFunc("POST /api/urls", createTinyUrl(shortener))
-	http.HandleFunc("GET /api/urls/{id}", fetchTinyUrl(shortener))
-	http.HandleFunc("DELETE /api/urls/{id}", deleteTinyUrl(shortener))
+	apiWrapper := func(f http.HandlerFunc) http.HandlerFunc {
+		return rateLimited(apiLimiter, f)
+	}
+
+	http.HandleFunc("GET /{id}", rateLimited(translateLimiter, translateTinyUrl(shortener)))
+	http.HandleFunc("GET /api/urls", apiWrapper(listTinyUrls(shortener)))
+	http.HandleFunc("POST /api/urls", apiWrapper(createTinyUrl(shortener)))
+	http.HandleFunc("GET /api/urls/{id}", apiWrapper(fetchTinyUrl(shortener)))
+	http.HandleFunc("DELETE /api/urls/{id}", apiWrapper(deleteTinyUrl(shortener)))
 
 	http.HandleFunc("/", redicrectToDocs)
 	http.Handle("/api/docs/", swgui.New("Tiny URL", "/api/docs/openapi.yaml", "/api/docs/"))
@@ -39,6 +46,22 @@ func main() {
 
 	log.Println("Listening on port 1337")
 	http.ListenAndServe("localhost:1337", nil)
+}
+
+func rateLimited(limiter *rl.RateLimiter, f http.HandlerFunc) http.HandlerFunc {
+	red := func(s string) string {
+		return fmt.Sprintf("\x1b[1;31m%s\x1b[0m", s)
+	}
+	erro_log_format := red("REQUEST BLOCKED") + " -> %s"
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := newLogger(r, "RATE LIMIT")
+		if !limiter.ShouldServe(getClientIp(r)) {
+			log.Error(erro_log_format, r.URL.Path)
+			http.Error(w, "Too many requests", http.StatusTooManyRequests)
+			return
+		}
+		f(w, r)
+	}
 }
 
 func redicrectToDocs(w http.ResponseWriter, r *http.Request) {
