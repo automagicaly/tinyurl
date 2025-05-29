@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const dayInSeconds = 24 * 60 * 60
+
 type _bucket struct {
 	capacity   int64
 	rate       int64
@@ -40,6 +42,10 @@ func (b *_bucket) useToken() bool {
 			return true
 		}
 	}
+}
+
+func (b *_bucket) isOld() bool {
+	return timestamp()-b.last_refil > dayInSeconds
 }
 
 func newBucket(rate int64) *_bucket {

@@ -30,15 +30,18 @@ func main() {
 		log.LUTC|log.Ldate|log.Ltime|log.Lmsgprefix,
 	)
 
-	// log compaction routine
+	apiLimiter := rl.NewRateLimiter(10)
+	translateLimiter := rl.NewRateLimiter(100)
+
+	// Compaction routine
 	go func() {
 		for range time.Tick(24 * time.Hour) {
-			shortener.CompactLog()
+			go shortener.CompactLog()
+			go apiLimiter.Compact()
+			go translateLimiter.Compact()
 		}
 	}()
 
-	apiLimiter := rl.NewRateLimiter(10)
-	translateLimiter := rl.NewRateLimiter(100)
 	apiWrapper := func(f http.HandlerFunc) http.HandlerFunc {
 		return rateLimited(apiLimiter, f)
 	}

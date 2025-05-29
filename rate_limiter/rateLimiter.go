@@ -20,6 +20,10 @@ func (rl *RateLimiter) fetchByIp(ip string) (*_bucket, error) {
 	return bucket, nil
 }
 
+func NewRateLimiter(rate int64) *RateLimiter {
+	return &RateLimiter{rate: rate, ipMap: sl.NewSkiplist[*_bucket]()}
+}
+
 func (rl *RateLimiter) ShouldServe(ip string) bool {
 	bucket, err := rl.fetchByIp(ip)
 	if err != nil {
@@ -28,6 +32,10 @@ func (rl *RateLimiter) ShouldServe(ip string) bool {
 	return bucket.useToken()
 }
 
-func NewRateLimiter(rate int64) *RateLimiter {
-	return &RateLimiter{rate: rate, ipMap: sl.NewSkiplist[*_bucket]()}
+func (rl *RateLimiter) Compact() {
+	for k, v := range rl.ipMap.Iter() {
+		if v.isOld() {
+			rl.ipMap.Remove(k)
+		}
+	}
 }
