@@ -13,8 +13,8 @@ import (
 
 	swgui "github.com/swaggest/swgui/v5cdn"
 
-	rl "lorde.tech/tinyurl/rate_limiter"
-	tiny "lorde.tech/tinyurl/shortener"
+	rl "lorde.tech/toys/rate_limiter"
+	tiny "lorde.tech/toys/shortener"
 )
 
 //go:embed static/openapi.yaml

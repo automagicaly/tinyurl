@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	sl "lorde.tech/tinyurl/skiplist"
+	sl "lorde.tech/toys/skiplist"
 )
 
 const TINY_URL_LENGTH = 8

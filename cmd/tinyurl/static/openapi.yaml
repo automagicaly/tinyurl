@@ -2,7 +2,7 @@ openapi: 3.1.1
 info:
   title: Tiny URL
   summary: A very much NOT prodution ready URL shortener
-  description: <a href="https://github.com/automagicaly/tinyurl">Github</a>
+  description: <a href="https://github.com/automagicaly/toys">Github</a>
   version: 1.0.0
 paths:
   /{id}:

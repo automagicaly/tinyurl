@@ -1,7 +1,7 @@
 package rate_limiter
 
 import (
-	sl "lorde.tech/tinyurl/skiplist"
+	sl "lorde.tech/toys/skiplist"
 )
 
 type RateLimiter struct {

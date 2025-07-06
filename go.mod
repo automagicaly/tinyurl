@@ -1,4 +1,4 @@
-module lorde.tech/tinyurl
+module lorde.tech/toys
 
 go 1.24.2
 
